@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1f3cff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Мои деньги">
+<title>Мои деньги</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;800&family=Golos+Text:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+/* VOICE: бодрый, дружелюбный, без морали — приложение подростка, а не банка
+   IDEA: банковская карта и чек — главный экран как синяя карта с остатком
+   PICTURE: крупная карта «осталось $ ≈ ₪», под ней наличные и полоса «нужно / хочу»
+   COLOUR and TYPE: электрический синий, лайм, коралл; Unbounded для цифр, Golos Text для текста
+   LAYOUT: одна колонка до 560px, нижняя навигация, шторки снизу */
+:root{color-scheme:light dark;--bg:light-dark(#f3f4f7,#0b0d12);--panel:light-dark(#ffffff,#171a22);--ink:light-dark(#0a0a0f,#f7f7fa);--sub:light-dark(#2b2f3a,#d4d7e0);--line:light-dark(#cfd3dc,#323745);--blue:#1f3cff;--lime:#c6ff3d;--coral:#ff6b6b;--gold:#ffc83d}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Golos Text",system-ui,sans-serif;overflow-x:clip;-webkit-tap-highlight-color:transparent}
+.app{max-width:560px;margin:0 auto;padding:max(16px,env(safe-area-inset-top)) 16px calc(96px + env(safe-area-inset-bottom))}
+h1,h2,.num{font-family:Unbounded,"Golos Text",sans-serif}
+h1{font-size:22px;margin:4px 0 14px;line-height:1.1}
+h2{font-size:17px;margin:24px 0 10px}
+p{margin:8px 0}
+.card{background:var(--blue);color:#fff;border-radius:22px;padding:20px;position:relative;overflow:hidden}
+.card::after{content:"";position:absolute;right:-50px;top:-50px;width:170px;height:170px;border-radius:50%;background:rgba(255,255,255,.13)}
+.card .lbl{font-size:15px;font-weight:700}
+.card .big{font-family:Unbounded;font-size:clamp(32px,10.5vw,48px);font-weight:800;line-height:1.05;margin:6px 0 4px;white-space:nowrap}
+.card .sub{font-size:16px;font-weight:600}
+.card.neg .big{color:#ffd2d2}
+.tiles{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;margin-top:10px}
+.tile,.panel{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:14px}
+.tile .lbl{font-size:14px;color:var(--sub);font-weight:700}
+.tile .v{font-family:Unbounded;font-size:clamp(16px,5vw,20px);font-weight:600;white-space:nowrap}
+.tile .s,.muted{font-size:14px;color:var(--sub)}
+.total{display:flex;justify-content:space-between;gap:10px;padding:12px 4px 4px;font-weight:700}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+button{font:inherit;color:inherit;cursor:pointer;min-height:48px;border-radius:14px;border:0;padding:10px 14px;font-weight:700}
+button:focus-visible,input:focus-visible,textarea:focus-visible,a:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.b-exp{background:var(--coral);color:#0a0a0f}
+.b-inc{background:var(--lime);color:#0a0a0f}
+.b-ghost{background:var(--panel);border:2px solid var(--ink)}
+.b-blue{background:var(--blue);color:#fff}
+.wide{width:100%;margin-top:10px}
+.split{display:flex;height:16px;border-radius:8px;overflow:hidden;background:var(--line);margin:12px 0 8px}
+.split i{display:block;height:100%}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:14px;font-weight:700}
+.legend b{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;align-items:center;padding:8px 0 2px}
+.bar{grid-column:1/-1;height:8px;background:var(--line);border-radius:4px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--blue)}
+.amt{font-weight:700;white-space:nowrap;text-align:right}
+nav{position:fixed;left:0;right:0;bottom:0;background:var(--panel);border-top:1px solid var(--line);display:flex;justify-content:center;padding-bottom:env(safe-area-inset-bottom);z-index:5}
+nav div{display:grid;grid-template-columns:repeat(4,1fr);width:100%;max-width:560px}
+nav button{background:none;border-radius:0;font-size:14px;min-height:60px;color:var(--sub)}
+nav button[aria-current=true]{color:var(--ink);box-shadow:inset 0 3px 0 var(--blue)}
+.tx{display:grid;grid-template-columns:minmax(0,1fr) auto 44px;gap:2px 8px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.tx .t{font-weight:700}
+.tx .m{font-size:14px;color:var(--sub)}
+.tx .x{background:none;min-height:44px;padding:0;font-size:24px;color:var(--sub)}
+.day{font-weight:700;margin:18px 0 2px;font-size:14px;color:var(--sub)}
+.tag{display:inline-block;font-size:12px;font-weight:700;padding:1px 7px;border-radius:6px;color:#0a0a0f;margin-left:6px;vertical-align:1px}
+.need{background:var(--lime)}.want{background:var(--coral)}.plan{background:var(--gold)}
+.pos{color:light-dark(#08702b,#86ffa6)}
+.back{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9;display:none}
+.back.on{display:block}
+.sheet{position:fixed;left:50%;bottom:0;transform:translateX(-50%);width:100%;max-width:560px;max-height:92vh;overflow:auto;background:var(--panel);border-radius:22px 22px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom));z-index:10;display:none}
+.sheet.on{display:block;animation:up .22s ease-out}
+@keyframes up{from{transform:translate(-50%,30px);opacity:0}}
+@media(prefers-reduced-motion:reduce){.sheet.on{animation:none}}
+label{display:block;font-weight:700;margin:14px 0 6px;font-size:15px}
+input,textarea{font:inherit;font-size:16px;width:100%;min-height:48px;padding:10px 12px;border-radius:12px;border:2px solid var(--line);background:var(--bg);color:var(--ink)}
+input.bigin{font-family:Unbounded;font-size:26px;font-weight:600}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button,.chip{background:var(--bg);border:2px solid var(--line);min-height:44px;font-weight:700;padding:8px 12px;border-radius:12px}
+.seg button[aria-pressed=true],.chip[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.hint{font-size:15px;margin-top:8px;font-weight:700}
+.warn{color:light-dark(#b00020,#ff9090)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(76px + env(safe-area-inset-bottom));background:var(--ink);color:var(--bg);padding:10px 14px;border-radius:12px;font-weight:700;z-index:20;display:none;align-items:center;gap:12px;width:max-content;max-width:92vw}
+.toast.on{display:flex}
+.toast button{min-height:36px;background:var(--gold);color:#0a0a0f;padding:4px 10px}
+.goal{margin-bottom:12px}
+.goal .gt{display:flex;justify-content:space-between;gap:8px;font-weight:700}
+.goal .bar{height:12px;margin:8px 0}
+.goal .bar i{background:var(--lime)}
+.gbtns{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.gbtns button{min-height:44px;font-size:15px}
+pre{white-space:pre-wrap;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:12px;font:15px/1.45 "Golos Text",sans-serif;margin:0;overflow-x:auto}
+.links{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+.links a{display:inline-flex;align-items:center;min-height:44px;padding:8px 14px;border-radius:12px;font-weight:700;text-decoration:none;color:var(--ink);border:2px solid var(--ink)}
+.empty{padding:22px 8px;text-align:center;color:var(--sub);font-weight:700}
+</style>
+</head>
+<body>
+<main class="app" id="app"></main>
+<nav id="nav"><div>
+<button data-act="tab" data-v="home">Главная</button><button data-act="tab" data-v="hist">История</button><button data-act="tab" data-v="goals">Копилка</button><button data-act="tab" data-v="more">Ещё</button>
+</div></nav>
+<div class="back" id="back" data-act="close"></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true"></div>
+<div class="toast" id="toast" role="status"></div>
+<script>
+{
+const KEY='moi-dengi-v1';
+const CATS=['Еда','Кафе и фастфуд','Транспорт','Одежда','Развлечения','Игры и подписки','Подарки','Школа','Красота','Другое'];
+const SRC=['Карманные','Подарок','Подработка','Другое'];
+const WAL={card:{n:'Карта $',c:'USD'},ils:{n:'Наличные ₪',c:'ILS'},usd:{n:'Наличные $',c:'USD'}};
+const NW={need:'нужно',want:'хочу',plan:'по плану'};
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const r2=n=>Math.round(n*100)/100;
+const num=v=>{const n=parseFloat(String(v??'').replace(',','.').replace(/\s/g,''));return isFinite(n)?n:NaN};
+const money=(n,c)=>{const v=Math.abs(n).toLocaleString('ru-RU',{minimumFractionDigits:2,maximumFractionDigits:2});const s=n<-0.004?'−':'';return c==='USD'?s+'$'+v:s+v+' ₪'};
+const ils0=n=>(n<-0.5?'−':'')+Math.abs(Math.round(n)).toLocaleString('ru-RU')+' ₪';
+let S=null,tab='home',draft={},sk=null,lastDel=null,tt;
+try{S=JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){}
+const save=()=>{try{if(S)localStorage.setItem(KEY,JSON.stringify(S));else localStorage.removeItem(KEY)}catch(e){}};
+const cur=w=>WAL[w].c;
+const toILS=(n,c)=>c==='USD'?n*S.rate:n;
+const bal=w=>r2(S.tx.filter(t=>t.w===w).reduce((a,t)=>a+t.d,0));
+const totalILS=()=>Object.keys(WAL).reduce((a,w)=>a+toILS(bal(w),cur(w)),0);
+const week=()=>{const from=Date.now()-7*864e5;return S.tx.filter(t=>t.ts>=from)};
+const valILS=t=>Math.abs(t.d)*(cur(t.w)==='USD'?(t.r||S.rate):1);
+const goalSaved=g=>S.tx.filter(t=>t.g===g.id).reduce((a,t)=>a+(t.il||0),0);
+const inGoals=()=>S.goals.filter(g=>!g.done).reduce((a,g)=>a+goalSaved(g),0);
+const segW=()=>Object.keys(WAL).map(k=>`<button data-act="wal" data-v="${k}" aria-pressed="${draft.w===k}">${WAL[k].n}</button>`).join('');
+const chips=(arr)=>`<div class="chips">${arr.map(k=>`<button class="chip" data-act="cat" data-v="${k}" aria-pressed="${draft.cat===k}">${k}</button>`).join('')}</div>`;
+
+function setup(){
+  return `<h1>Мои деньги</h1>
+  <div class="card"><div class="lbl">Начнём с того, сколько у тебя сейчас</div><div class="sub" style="margin-top:6px">Посмотри баланс карты в приложении банка и пересчитай наличные.</div></div>
+  <div class="panel" style="margin-top:12px">
+  <label for="s_nm">Как тебя зовут</label><input id="s_nm" autocomplete="given-name">
+  <label for="s_card">На карте, $</label><input id="s_card" inputmode="decimal" placeholder="0">
+  <label for="s_ils">Наличные, ₪</label><input id="s_ils" inputmode="decimal" placeholder="0">
+  <label for="s_usd">Наличные, $</label><input id="s_usd" inputmode="decimal" placeholder="0">
+  <label for="s_rate">Курс: сколько ₪ за 1 $</label><input id="s_rate" inputmode="decimal" value="3.6">
+  <div class="muted">3.6 — примерное значение. Если есть интернет, приложение само подтянет точный курс.</div>
+  <button class="b-blue wide" data-act="start">Поехали</button></div>`;
+}
+
+function home(){
+  const cb=bal('card'),ib=bal('ils'),ub=bal('usd');
+  const wk=week().filter(t=>t.k==='exp');
+  const tot=wk.reduce((a,t)=>a+valILS(t),0);
+  const by={need:0,want:0,plan:0};wk.forEach(t=>by[t.nw||'need']+=valILS(t));
+  const cats={};wk.forEach(t=>cats[t.cat]=(cats[t.cat]||0)+valILS(t));
+  const top=Object.entries(cats).sort((a,b)=>b[1]-a[1]).slice(0,4);
+  const pct=v=>tot?Math.round(v/tot*100):0;
+  const goals=S.goals.filter(g=>!g.done).slice(0,2);
+  const ig=inGoals();
+  return `<h1>Привет${S.name?', '+esc(S.name):''}!</h1>
+  <div class="card${cb<0?' neg':''}"><div class="lbl">На карте осталось</div><div class="big">${money(cb,'USD')}</div><div class="sub">≈ ${ils0(cb*S.rate)} · курс ${S.rate} ₪ за $</div></div>
+  <div class="tiles"><div class="tile"><div class="lbl">Наличные ₪</div><div class="v">${money(ib,'ILS')}</div></div>
+  <div class="tile"><div class="lbl">Наличные $</div><div class="v">${money(ub,'USD')}</div><div class="s">≈ ${ils0(ub*S.rate)}</div></div></div>
+  <div class="total"><span>Всего денег</span><span>≈ ${ils0(totalILS())}</span></div>
+  ${ig>0?`<div class="total" style="padding-top:0"><span>И в копилке</span><span>${ils0(ig)}</span></div>`:''}
+  <div class="actions"><button class="b-exp" data-act="exp">− Потратила</button><button class="b-inc" data-act="inc">+ Получила</button></div>
+  <button class="b-ghost wide" data-act="rec">Сверить с банком</button>
+  <h2>Последние 7 дней</h2>
+  <div class="panel">${tot?`<div class="num" style="font-size:24px;font-weight:600">${ils0(tot)}</div><div class="muted">потрачено · покупок: ${wk.length}</div>
+  <div class="split"><i class="need" style="width:${pct(by.need)}%"></i><i class="plan" style="width:${pct(by.plan)}%"></i><i class="want" style="width:${pct(by.want)}%"></i></div>
+  <div class="legend"><span><b class="need"></b>Нужно ${pct(by.need)}%</span>${by.plan?`<span><b class="plan"></b>По плану ${pct(by.plan)}%</span>`:''}<span><b class="want"></b>Хочу ${pct(by.want)}%</span></div>
+  ${top.map(([c,v])=>`<div class="row"><span>${esc(c)}</span><span class="amt">${ils0(v)}</span><div class="bar"><i style="width:${pct(v)}%"></i></div></div>`).join('')}`
+  :'<div class="empty">Трат пока нет. Записывай каждую покупку — через неделю увидишь, куда уходят деньги.</div>'}</div>
+  ${goals.length?`<h2>Копилка</h2>${goals.map(g=>goalHTML(g,false)).join('')}`:''}
+  <button class="b-blue wide" data-act="report" style="margin-top:20px">Отправить отчёт маме</button>`;
+}
+
+function forecast(g,s){
+  const from=Date.now()-28*864e5;
+  const saves=S.tx.filter(t=>t.k==='save'&&t.g===g.id&&t.ts>=from);
+  if(!saves.length)return 'Откладывай хоть понемногу каждую неделю — покажу, когда накопится.';
+  const first=Math.min(...saves.map(t=>t.ts));
+  const weeks=Math.min(4,Math.max(1,(Date.now()-first)/(7*864e5)));
+  const w=saves.reduce((a,t)=>a+t.il,0)/weeks;
+  return `В среднем ${ils0(w)} в неделю → ещё примерно ${Math.ceil((g.target-s)/w)} нед.`;
+}
+function goalHTML(g,full){
+  const s=goalSaved(g),p=Math.min(100,Math.round(s/g.target*100));
+  const btns=!full?'':g.done?`<div class="gbtns"><button class="b-ghost" data-act="gdel" data-id="${g.id}">Убрать из списка</button></div>`
+    :`<div class="gbtns"><button class="b-inc" data-act="gadd" data-id="${g.id}">Отложить</button>${p>=100?`<button class="b-blue" data-act="gdone" data-id="${g.id}">Купила!</button>`:''}<button class="b-ghost" data-act="gdel" data-id="${g.id}">Удалить</button></div>`;
+  return `<div class="panel goal"><div class="gt"><span>${esc(g.name)}</span><span class="amt">${ils0(s)} / ${ils0(g.target)}</span></div>
+  <div class="bar"><i style="width:${p}%"></i></div><div class="muted">${g.done?'Куплено по плану, без импульса.':p>=100?'Накоплено! Можно покупать.':forecast(g,s)}</div>${btns}</div>`;
+}
+function goalsTab(){
+  const a=S.goals.filter(g=>!g.done),d=S.goals.filter(g=>g.done);
+  return `<h1>Копилка</h1><p class="muted" style="margin-bottom:14px">Отложенные деньги уходят из кошелька в цель. Так их не потратишь случайно.</p>
+  ${a.map(g=>goalHTML(g,true)).join('')||'<div class="empty">Целей пока нет. На что копим?</div>'}
+  <button class="b-blue wide" data-act="gnew">+ Новая цель</button>
+  ${d.length?`<h2>Уже купила</h2>${d.map(g=>goalHTML(g,true)).join('')}`:''}`;
+}
+
+function txHTML(t){
+  const c=cur(t.w);
+  const title=t.k==='save'?'В копилку: '+(S.goals.find(g=>g.id===t.g)?.name||'цель'):t.k==='adj'?(t.note||'Корректировка'):t.cat;
+  const orig=t.oc&&t.oc!==c?' · '+money(t.oa,t.oc):'';
+  const tag=t.k==='exp'?`<span class="tag ${t.nw}">${NW[t.nw]}</span>`:'';
+  const note=t.note&&t.k!=='adj'?' · '+esc(t.note):'';
+  return `<div class="tx"><div><div class="t">${esc(title)}${tag}</div><div class="m">${WAL[t.w].n}${orig}${note}</div></div>
+  <div class="amt${t.d>0?' pos':''}">${t.d>0?'+':''}${money(t.d,c)}</div><button class="x" data-act="del" data-id="${t.id}" aria-label="Удалить запись">×</button></div>`;
+}
+function hist(){
+  if(!S.tx.length)return '<h1>История</h1><div class="empty">Пока пусто.</div>';
+  let out='<h1>История</h1>',day='';
+  for(const t of [...S.tx].sort((a,b)=>b.ts-a.ts).slice(0,400)){
+    const d=new Date(t.ts).toLocaleDateString('ru-RU',{weekday:'short',day:'numeric',month:'long'});
+    if(d!==day){out+=`<div class="day">${d}</div>`;day=d}
+    out+=txHTML(t);
+  }
+  return out;
+}
+
+function more(){
+  const info=S.rateTs?'Обновлён автоматически '+new Date(S.rateTs).toLocaleString('ru-RU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'Введён вручную';
+  return `<h1>Ещё</h1>
+  <div class="panel"><label for="rate">Курс: сколько ₪ за 1 $</label><input id="rate" inputmode="decimal" value="${S.rate}">
+  <div class="muted">${info}</div>
+  <button class="b-ghost wide" data-act="fetchrate">Обновить курс из интернета</button>
+  <label for="fee">Комиссия банка за конвертацию, %</label><input id="fee" inputmode="decimal" value="${S.fee}">
+  <div class="muted">Когда платишь картой в шекелях, банк меняет доллары по своему курсу и берёт комиссию. Точный процент можно узнать в банке, а остальное поправит сверка.</div>
+  <label for="th">«Правило 24 часов»: для «хочу» дороже, ₪</label><input id="th" inputmode="decimal" value="${S.th}">
+  <label for="nm">Имя</label><input id="nm" value="${esc(S.name)}">
+  <button class="b-blue wide" data-act="saveset">Сохранить</button></div>
+  <h2>Отчёт</h2><button class="b-blue wide" data-act="report">Отправить отчёт маме</button>
+  <h2>Резервная копия</h2><div class="panel"><div class="muted">Все данные хранятся только на этом телефоне. Раз в месяц делай копию.</div>
+  <button class="b-ghost wide" data-act="bkfile">Скачать копию файлом</button><button class="b-ghost wide" data-act="bk">Скопировать копию текстом</button>
+  <label for="impf">Восстановить из файла</label><input id="impf" type="file" accept=".json,application/json">
+  <label for="imp">…или вставь копию текстом</label><textarea id="imp" rows="3"></textarea><button class="b-ghost wide" data-act="imp">Восстановить</button></div>
+  <button class="b-ghost wide" data-act="reset" style="margin-top:28px">Начать заново</button>`;
+}
+
+function calc(){
+  const a=num(draft.amt);if(!(a>0))return null;
+  const w=draft.w,c=cur(w);
+  const d=(w==='card'&&draft.cur==='ILS')?a/S.rate*(1+S.fee/100):a;
+  return {a,d:r2(d),left:r2(bal(w)-d),c};
+}
+const SH={
+  exp(){
+    const w=draft.w,curs=w==='card'?['ILS','USD']:[cur(w)];
+    if(!curs.includes(draft.cur))draft.cur=curs[0];
+    return `<h2 style="margin-top:0">Потратила</h2><div class="seg">${segW()}</div>
+    <label for="amt">Сумма</label><div style="display:flex;gap:8px"><input id="amt" class="bigin" inputmode="decimal" placeholder="0" value="${esc(draft.amt||'')}">
+    ${curs.length>1?`<div class="seg" style="flex:none;flex-wrap:nowrap">${curs.map(k=>`<button data-act="cur" data-v="${k}" aria-pressed="${draft.cur===k}">${k==='ILS'?'₪':'$'}</button>`).join('')}</div>`:''}</div>
+    <div class="hint" id="prev"></div>
+    <label>На что</label>${chips(CATS)}
+    <label for="note">Заметка (если хочешь)</label><input id="note" value="${esc(draft.note||'')}">
+    <div class="two"><button class="b-inc" data-act="saveexp" data-v="need">Это нужно</button><button class="b-exp" data-act="saveexp" data-v="want">Это хочу</button></div>
+    <div class="hint warn" id="err"></div>`;
+  },
+  inc(){
+    const c=cur(draft.w);
+    return `<h2 style="margin-top:0">Получила</h2><div class="seg">${segW()}</div>
+    <label for="amt">Сумма, ${c==='USD'?'$':'₪'}</label><input id="amt" class="bigin" inputmode="decimal" placeholder="0" value="${esc(draft.amt||'')}">
+    <label>Откуда</label>${chips(SRC)}
+    <label for="note">Заметка</label><input id="note" value="${esc(draft.note||'')}">
+    <button class="b-inc wide" data-act="saveinc">Добавить</button><div class="hint warn" id="err"></div>`;
+  },
+  rec(){
+    const w=draft.w,c=cur(w);
+    return `<h2 style="margin-top:0">Сверка</h2><div class="seg">${segW()}</div>
+    <p>В приложении сейчас: <b>${money(bal(w),c)}</b></p>
+    <label for="amt">${w==='card'?'Сколько на карте по приложению банка':'Сколько реально в кошельке'}, ${c==='USD'?'$':'₪'}</label>
+    <input id="amt" class="bigin" inputmode="decimal" value="${esc(draft.amt||'')}">
+    <div class="hint" id="prev"></div>
+    <button class="b-blue wide" data-act="saverec">Исправить баланс</button><div class="hint warn" id="err"></div>`;
+  },
+  rule(){
+    const t=totalILS(),share=t>0?Math.round(draft.il/t*100):0;
+    return `<h2 style="margin-top:0">Правило 24 часов</h2>
+    <p>Покупка на <b>${ils0(draft.il)}</b>, а это примерно <b>${share}%</b> всех твоих денег.</p>
+    <p>Многие «хочу» к утру проходят. Если завтра всё ещё хочется, значит вещь правда нужна, бери спокойно.</p>
+    <div class="two"><button class="b-inc" data-act="wait">Подумаю до завтра</button><button class="b-exp" data-act="force">Купить сейчас</button></div>`;
+  },
+  gnew(){
+    return `<h2 style="margin-top:0">Новая цель</h2>
+    <label for="g_name">На что копим</label><input id="g_name" placeholder="Например, наушники">
+    <label for="g_t">Сколько стоит, ₪</label><input id="g_t" class="bigin" inputmode="decimal" placeholder="0">
+    <p class="muted">Подели цену на сумму, которую готова откладывать в неделю, — получишь срок.</p>
+    <button class="b-blue wide" data-act="gsave">Создать</button><div class="hint warn" id="err"></div>`;
+  },
+  gadd(){
+    const g=S.goals.find(x=>x.id===draft.g),c=cur(draft.w);
+    return `<h2 style="margin-top:0">Отложить: ${esc(g?.name)}</h2><div class="seg">${segW()}</div>
+    <label for="amt">Сколько, ${c==='USD'?'$':'₪'}</label><input id="amt" class="bigin" inputmode="decimal" placeholder="0" value="${esc(draft.amt||'')}">
+    <div class="hint" id="prev"></div>
+    <button class="b-inc wide" data-act="gput">Отложить</button><div class="hint warn" id="err"></div>`;
+  },
+  gdel(){
+    const g=S.goals.find(x=>x.id===draft.g);
+    return `<h2 style="margin-top:0">Удалить «${esc(g?.name)}»?</h2>
+    <p>${g?.done?'Покупка останется в истории.':`Отложенные ${ils0(goalSaved(g))} вернутся в кошельки, из которых ты их брала.`}</p>
+    <div class="two"><button class="b-ghost" data-act="close">Отмена</button><button class="b-exp" data-act="gdelyes">Удалить</button></div>`;
+  },
+  report(){
+    const t=reportText(),e=encodeURIComponent(t);
+    return `<h2 style="margin-top:0">Отчёт за 7 дней</h2><pre>${esc(t)}</pre>
+    <button class="b-blue wide" data-act="share">Отправить</button>
+    <div class="links"><a href="https://wa.me/?text=${e}" target="_blank" rel="noopener">WhatsApp</a><a href="https://t.me/share/url?url=%20&amp;text=${e}" target="_blank" rel="noopener">Telegram</a><button class="b-ghost" data-act="copyrep">Копировать</button></div>`;
+  },
+  reset(){
+    return `<h2 style="margin-top:0">Стереть всё?</h2><p>Все записи и цели удалятся с телефона. Сначала лучше сделать копию.</p>
+    <div class="two"><button class="b-ghost" data-act="close">Отмена</button><button class="b-exp" data-act="resetyes">Стереть</button></div>`;
+  }
+};
+
+function live(){
+  const el=$('#prev');if(!el)return;
+  el.className='hint';el.textContent='';
+  const a=num(draft.amt);
+  if(sk==='exp'){
+    const r=calc();if(!r)return;
+    let s=draft.w==='card'&&draft.cur==='ILS'?`Спишется ≈ ${money(r.d,'USD')} (курс ${S.rate} + комиссия ${S.fee}%). `:'';
+    s+=`Останется ${money(r.left,r.c)}${r.c==='USD'?' ≈ '+ils0(r.left*S.rate):''}`;
+    if(r.left<0){s+=' — не хватает!';el.classList.add('warn')}
+    el.textContent=s;
+  }else if(sk==='rec'){
+    if(!isFinite(a))return;
+    const diff=r2(a-bal(draft.w)),c=cur(draft.w);
+    el.textContent=Math.abs(diff)<0.01?'Всё сходится!':`Разница ${diff>0?'+':''}${money(diff,c)}. `+(draft.w==='card'?'Обычно это курс банка и комиссии.':'Может, какую-то трату забыла записать?');
+  }else if(sk==='gadd'){
+    if(!(a>0))return;
+    const left=r2(bal(draft.w)-a);
+    el.textContent=`В кошельке останется ${money(left,cur(draft.w))}`;
+    if(left<0)el.classList.add('warn');
+  }
+}
+function sheet(k){
+  if(k)sk=k;
+  const el=$('#sheet');el.innerHTML=SH[sk]();el.classList.add('on');$('#back').classList.add('on');live();
+}
+function closeSheet(){$('#sheet').classList.remove('on');$('#back').classList.remove('on');sk=null}
+function toast(msg,act,id){
+  const el=$('#toast');el.innerHTML=`<span>${esc(msg)}</span>`+(act?`<button data-act="${act}" data-id="${id||''}">Отменить</button>`:'');
+  el.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>el.classList.remove('on'),4500);
+}
+const err=m=>{const e=$('#err');if(e)e.textContent=m};
+
+function addTx(t){t.id=uid();t.ts=Date.now();if(cur(t.w)==='USD')t.r=S.rate;S.tx.push(t);save();return t}
+function saveExp(nw,force){
+  const r=calc();if(!r)return err('Введи сумму');
+  if(!draft.cat)return err('Выбери, на что');
+  const il=r.c==='USD'?r.d*S.rate:r.d;
+  if(nw==='want'&&!force&&S.th>0&&il>=S.th){draft.nw=nw;draft.il=il;return sheet('rule')}
+  const t={k:'exp',w:draft.w,d:-r.d,cat:draft.cat,nw,note:(draft.note||'').trim()};
+  if(draft.w==='card'&&draft.cur==='ILS'){t.oa=r.a;t.oc='ILS'}
+  const x=addTx(t);closeSheet();render();toast('Записано','undo',x.id);
+}
+
+function reportText(){
+  const wk=week(),ex=wk.filter(t=>t.k==='exp'),inc=wk.filter(t=>t.k==='inc');
+  const tot=ex.reduce((a,t)=>a+valILS(t),0),incT=inc.reduce((a,t)=>a+valILS(t),0);
+  const f=d=>d.toLocaleDateString('ru-RU',{day:'numeric',month:'short'});
+  const cats={};ex.forEach(t=>cats[t.cat]=(cats[t.cat]||0)+valILS(t));
+  const by={need:0,want:0,plan:0};ex.forEach(t=>by[t.nw]+=valILS(t));
+  const p=v=>tot?Math.round(v/tot*100):0;
+  const L=[`Отчёт${S.name?' — '+S.name:''} за ${f(new Date(Date.now()-6*864e5))} – ${f(new Date())}`,'',
+    'Баланс:',`• Карта: ${money(bal('card'),'USD')} (≈ ${ils0(bal('card')*S.rate)})`,`• Наличные: ${money(bal('ils'),'ILS')} и ${money(bal('usd'),'USD')}`,`• Всего ≈ ${ils0(totalILS())}`,'',
+    `Потрачено: ${ils0(tot)} (покупок: ${ex.length})`];
+  Object.entries(cats).sort((a,b)=>b[1]-a[1]).forEach(([c,v])=>L.push(`• ${c} — ${ils0(v)}`));
+  if(tot)L.push(`Нужно ${p(by.need)}% · Хочу ${p(by.want)}%${by.plan?` · По плану ${p(by.plan)}%`:''}`);
+  L.push('',`Получено: ${ils0(incT)}`);
+  const g=S.goals.filter(x=>!x.done);
+  if(g.length){L.push('','Копилка:');g.forEach(x=>{const s=goalSaved(x);L.push(`• ${x.name}: ${ils0(s)} из ${ils0(x.target)} (${Math.min(100,Math.round(s/x.target*100))}%)`)})}
+  L.push('',`Курс: ${S.rate} ₪ за $`);
+  return L.join('\n');
+}
+function fb(t){const a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();let ok=false;try{ok=document.execCommand('copy')}catch(e){}a.remove();toast(ok?'Скопировано — вставь в чат':'Не получилось скопировать')}
+function copy(t){try{navigator.clipboard.writeText(t).then(()=>toast('Скопировано — вставь в чат'),()=>fb(t))}catch(e){fb(t)}}
+function restore(txt){
+  try{const o=JSON.parse(txt);if(!o||!Array.isArray(o.tx)||!(o.rate>0))throw 0;o.goals=o.goals||[];S=o;save();tab='home';render();toast('Восстановлено')}
+  catch(e){toast('Это не похоже на копию')}
+}
+async function fetchRate(manual){
+  try{
+    const r=await fetch('https://open.er-api.com/v6/latest/USD');const j=await r.json();const v=j&&j.rates&&j.rates.ILS;
+    if(!(v>0))throw 0;
+    S.rate=Math.round(v*1000)/1000;S.rateTs=Date.now();S.manual=false;save();render();
+    if(manual)toast('Курс обновлён: '+S.rate+' ₪ за $');
+  }catch(e){if(manual)toast('Нет связи — введи курс вручную')}
+}
+
+function render(){
+  const app=$('#app');
+  if(!S){app.innerHTML=setup();$('#nav').style.display='none';return}
+  $('#nav').style.display='';
+  app.innerHTML={home,hist,goals:goalsTab,more}[tab]();
+  document.querySelectorAll('#nav button').forEach(b=>b.setAttribute('aria-current',b.dataset.v===tab));
+}
+
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-act]');if(!b)return;
+  const a=b.dataset.act,v=b.dataset.v,id=b.dataset.id;
+  switch(a){
+    case 'tab':tab=v;render();scrollTo(0,0);break;
+    case 'close':closeSheet();break;
+    case 'exp':draft={w:'card',cur:'ILS'};sheet('exp');break;
+    case 'inc':draft={w:'card'};sheet('inc');break;
+    case 'rec':draft={w:'card'};sheet('rec');break;
+    case 'wal':draft.w=v;if(sk==='rec')draft.amt='';sheet();break;
+    case 'cur':draft.cur=v;sheet();break;
+    case 'cat':draft.cat=v;document.querySelectorAll('[data-act=cat]').forEach(x=>x.setAttribute('aria-pressed',x.dataset.v===v));break;
+    case 'saveexp':saveExp(v,false);break;
+    case 'force':saveExp(draft.nw,true);break;
+    case 'wait':closeSheet();toast('Хорошее решение. Вернись к этому завтра');break;
+    case 'saveinc':{const n=num(draft.amt);if(!(n>0))return err('Введи сумму');if(!draft.cat)return err('Выбери, откуда деньги');
+      const x=addTx({k:'inc',w:draft.w,d:n,cat:draft.cat,note:(draft.note||'').trim()});closeSheet();render();toast('Добавлено','undo',x.id);break}
+    case 'saverec':{const n=num(draft.amt);if(!isFinite(n))return err('Введи сумму');const diff=r2(n-bal(draft.w));
+      if(Math.abs(diff)<0.01){closeSheet();toast('Всё сходится!');break}
+      const x=addTx({k:'adj',w:draft.w,d:diff,note:draft.w==='card'?'Сверка: курс и комиссии банка':'Сверка: незаписанное'});closeSheet();render();toast('Баланс исправлен','undo',x.id);break}
+    case 'undo':S.tx=S.tx.filter(t=>t.id!==id);save();render();$('#toast').classList.remove('on');break;
+    case 'del':lastDel=S.tx.find(t=>t.id===id);S.tx=S.tx.filter(t=>t.id!==id);save();render();toast('Удалено','restore');break;
+    case 'restore':if(lastDel){S.tx.push(lastDel);lastDel=null;save();render()}$('#toast').classList.remove('on');break;
+    case 'gnew':draft={};sheet('gnew');break;
+    case 'gsave':{const nm=$('#g_name').value.trim(),t=num($('#g_t').value);if(!nm)return err('Напиши, на что копим');if(!(t>0))return err('Введи цену');
+      S.goals.push({id:uid(),name:nm,target:t,done:false});save();closeSheet();render();break}
+    case 'gadd':draft={w:'ils',g:id};sheet('gadd');break;
+    case 'gput':{const n=num(draft.amt);if(!(n>0))return err('Введи сумму');if(n>bal(draft.w)+0.001)return err('В этом кошельке столько нет');
+      addTx({k:'save',w:draft.w,d:-n,g:draft.g,il:toILS(n,cur(draft.w))});closeSheet();render();toast('Отложено');break}
+    case 'gdone':{const g=S.goals.find(x=>x.id===id);g.done=true;
+      S.tx.forEach(t=>{if(t.k==='save'&&t.g===id){t.k='exp';t.cat='Копилка: '+g.name;t.nw='plan'}});save();render();toast('Цель достигнута! Поздравляю');break}
+    case 'gdel':draft={g:id};sheet('gdel');break;
+    case 'gdelyes':{const g=S.goals.find(x=>x.id===draft.g);if(g&&!g.done)S.tx=S.tx.filter(t=>!(t.k==='save'&&t.g===g.id));
+      S.goals=S.goals.filter(x=>x.id!==draft.g);save();closeSheet();render();break}
+    case 'report':sheet('report');break;
+    case 'share':{const t=reportText();if(navigator.share)navigator.share({text:t}).catch(er=>{if(!er||er.name!=='AbortError')copy(t)});else copy(t);break}
+    case 'copyrep':copy(reportText());break;
+    case 'saveset':{const r=num($('#rate').value),f=num($('#fee').value),th=num($('#th').value);
+      if(!(r>0))return toast('Курс должен быть больше нуля');
+      if(r!==S.rate){S.rate=r;S.manual=true;S.rateTs=null}
+      S.fee=f>=0?f:S.fee;S.th=th>=0?th:S.th;S.name=$('#nm').value.trim();save();render();toast('Сохранено');break}
+    case 'fetchrate':fetchRate(true);break;
+    case 'bk':copy(JSON.stringify(S));break;
+    case 'bkfile':{try{const u=URL.createObjectURL(new Blob([JSON.stringify(S)],{type:'application/json'}));const l=document.createElement('a');
+      l.href=u;l.download='moi-dengi-'+new Date().toISOString().slice(0,10)+'.json';document.body.appendChild(l);l.click();l.remove();setTimeout(()=>URL.revokeObjectURL(u),2000)}catch(er){toast('Не получилось — скопируй текстом')}break}
+    case 'imp':restore($('#imp').value);break;
+    case 'reset':sheet('reset');break;
+    case 'resetyes':S=null;save();closeSheet();tab='home';render();break;
+    case 'start':{const rate=num($('#s_rate').value)>0?num($('#s_rate').value):3.6;
+      S={name:$('#s_nm').value.trim(),rate,fee:2,th:100,tx:[],goals:[],manual:false,rateTs:null};
+      [['card','#s_card'],['ils','#s_ils'],['usd','#s_usd']].forEach(([w,sel])=>{const n=num($(sel).value);if(n>0)addTx({k:'adj',w,d:r2(n),note:'Начальный баланс'})});
+      save();render();fetchRate(false);break}
+  }
+});
+document.addEventListener('input',e=>{
+  const id=e.target.id;
+  if(id==='amt'){draft.amt=e.target.value;live()}
+  if(id==='note')draft.note=e.target.value;
+});
+document.addEventListener('change',e=>{
+  if(e.target.id==='impf'&&e.target.files[0]){const fr=new FileReader();fr.onload=()=>restore(fr.result);fr.readAsText(e.target.files[0])}
+});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&sk)closeSheet()});
+
+render();
+if(S&&!S.manual&&(!S.rateTs||Date.now()-S.rateTs>12*36e5))fetchRate(false);
+}
+</script>
+</body>
+</html>
